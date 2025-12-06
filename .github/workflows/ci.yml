@@ -1,0 +1,19 @@
+name: CI
+on:
+  push:
+    branches: [ main, 'students/**' ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup
+        run: # comandos de setup (ex: setup python/node)
+          echo "setup"
+      - name: Run tests
+        run: |
+          # rodar comando de testes, ex: npm test ou pytest
+          echo "execute tests here"

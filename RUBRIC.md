@@ -1,0 +1,1 @@
+critérios de avaliaçãopor tarefa

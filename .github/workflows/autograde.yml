@@ -1,0 +1,56 @@
+# CI workflow para rodar o runner de autograde (react-web + react-mobile)
+# Roda somente em ubuntu-latest e usa cache de npm para acelerar installs.
+name: Autograde CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  autograde:
+    name: Autograde on ubuntu
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (with npm cache)
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          # cache-dependency-path accepts comma separated paths; adjust if you have different lockfile names
+          cache-dependency-path: |
+            react-web/package-lock.json
+            react-mobile/package-lock.json
+
+      - name: Ensure results directory exists
+        run: mkdir -p results
+        shell: bash
+
+      - name: Run autograde runner (PowerShell)
+        shell: pwsh
+        run: |
+          Write-Host "Running grading/run_autograde.ps1 on ubuntu-latest"
+          if (-Not (Test-Path ./grading/run_autograde.ps1)) {
+            Write-Error "grading/run_autograde.ps1 not found. Make sure the runner exists in the repo."
+            exit 2
+          }
+          # Execute the centralized runner (it will install & run tests for each package)
+          ./grading/run_autograde.ps1
+
+      - name: Upload test results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autograde-results-ubuntu
+          path: results

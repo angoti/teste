@@ -1,0 +1,5 @@
+# Exemplo: um GitHub username por linha (remova linhas comentadas). Use os usernames reais da turma.
+joaosilva
+mariarosa
+pedrosantos
+```

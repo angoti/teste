@@ -1,0 +1,88 @@
+name: Create welcome issues
+
+on:
+  push:
+    branches:
+      - '**'
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  create-welcome-issues:
+    name: Create welcome issues if missing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create welcome issues if missing (robust)
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issuesToCreate = [
+              {
+                title: "Welcome — Assignment started",
+                body:
+                  "Olá! 👋\n\n" +
+                  "Bem-vindo(a) à tarefa. Aqui estão algumas instruções rápidas:\n\n" +
+                  "1. Clone este repositório localmente.\n" +
+                  "2. Rode os testes com o script de autograde (veja README).\n" +
+                  "3. Faça suas alterações no branch principal e faça push.\n" +
+                  "4. O workflow de autograde rodará automaticamente e você poderá baixar os resultados em Actions → Artifacts.\n\n" +
+                  "Se tiver dúvidas, abra uma issue com a label 'help' ou entre em contato com o instrutor.\n\n" +
+                  "Boa sorte!",
+                labels: ["welcome", "student"]
+              },
+              {
+                title: "Setup checklist (run locally before submitting)",
+                body:
+                  "Antes de submeter, verifique os itens abaixo:\n\n" +
+                  "- [ ] Node.js (versão recomendada: 18.x) instalado\n" +
+                  "- [ ] Executou `npm ci` ou `npm install` na raiz dos subprojetos\n" +
+                  "- [ ] Rodou os testes localmente: `PowerShell -File grading/run_autograde.ps1` (ou `npx jest` nos subprojetos)\n" +
+                  "- [ ] Atualizou README com observações (se necessário)\n\n" +
+                  "Se algum item falhar, abra uma issue com a label 'help'.",
+                labels: ["todo", "student"]
+              }
+            ];
+
+            const { owner, repo } = context.repo;
+
+            console.log(`Repository: ${owner}/${repo}`);
+
+            // pegar issues existentes (paginar se necessário)
+            let existing = [];
+            for (let page = 1; page <= 5; page++) {
+              const res = await github.rest.issues.listForRepo({
+                owner,
+                repo,
+                state: "all",
+                per_page: 100,
+                page
+              });
+              if (!res || !res.data || res.data.length === 0) break;
+              existing = existing.concat(res.data.map(i => i.title));
+            }
+            console.log(`Found ${existing.length} existing issues. Titles (first 20):`, existing.slice(0, 20));
+
+            for (const it of issuesToCreate) {
+              try {
+                if (existing.includes(it.title)) {
+                  console.log(`Skipping creation — issue already exists with title: "${it.title}"`);
+                } else {
+                  const created = await github.rest.issues.create({
+                    owner,
+                    repo,
+                    title: it.title,
+                    body: it.body,
+                    labels: it.labels
+                  });
+                  console.log(`Created issue "${it.title}" => url: ${created.data.html_url}`);
+                }
+              } catch (err) {
+                console.log(`Error creating issue "${it.title}":`, err.message || err);
+                core.setFailed(`Failed to create issue "${it.title}": ${err}`);
+              }
+            }
